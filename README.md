@@ -41,6 +41,40 @@ wherever your Claude Code setup loads packaged skills from, or copy
 This skill is about the first row only: **the org acting as an MCP server**, hosting tools that
 an AI client (Claude, ChatGPT, Cursor, Vibes, `sf agent mcp`, ...) calls over HTTP.
 
+### How a tool call actually flows, end-to-end
+
+One-time OAuth/PKCE consent (next section) produces an access token; every conversation turn after
+that reuses it for a stateless-looking, but session-scoped, MCP handshake:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Agent as AI Agent<br/>(Claude / ChatGPT / Cursor / Vibes)
+    participant MCP as Salesforce Hosted MCP<br/>api.salesforce.com/platform/mcp/v1/...
+    participant Org as Salesforce Org<br/>(Apex / Flow / Data — as the calling user)
+
+    User->>Agent: "What are my open opportunities?"
+    Note over Agent,MCP: Bearer token from the PKCE flow (see below) — already in hand
+    Agent->>MCP: POST initialize (Authorization: Bearer token)
+    MCP-->>Agent: 200 + response header Mcp-Session-Id (a uuid)
+    Agent->>MCP: POST notifications/initialized (Mcp-Session-Id)
+    MCP-->>Agent: 202 (no body — this is a notification, not a request)
+    Agent->>MCP: POST tools/list (Mcp-Session-Id)
+    MCP-->>Agent: 200 [sobject_query, sobject_get, get_geolocate, ...]
+    Agent->>MCP: POST tools/call sobject_query {soql} (Mcp-Session-Id)
+    MCP->>Org: execute as the authenticated user
+    Note over Org: profile / permission-set CRUD & FLS enforced —<br/>MCP composes with the org's permission model, never bypasses it
+    Org-->>MCP: query results
+    MCP-->>Agent: 200 tool result (isError:false)
+    Agent-->>User: "You have 4 open opportunities: ..."
+```
+
+Every request after `initialize` must echo the `Mcp-Session-Id` header — omitting it fails with
+`"Session Key missing, but it's not an initialize request"`. `tools/call` is where a standard
+server's SObject tool, a custom `aa:`/`fa:` Apex/Flow tool, or a `Custom`-type external-API tool
+all land identically from the agent's point of view — the backing type only matters at
+registration time (see the tool-backing table below), not at call time.
+
 ### The data model `[org]`
 
 Nine MCP entities exist at API v67.0; two matter for administration:
@@ -141,6 +175,39 @@ Sampling (deprecated in the MCP spec itself, moot either way).
 Every hosted MCP server requires an **External Client App (ECA)** using OAuth **authorization
 code + PKCE** — the `sf` CLI's own token cannot substitute (it belongs to `PlatformCLI`, has no
 `mcp_api` scope, and hosted MCP returns `401` for it).
+
+**PKCE (Proof Key for Code Exchange)** lets a *public* client — one that can't safely hold a
+client secret, like a CLI script or a desktop agent — prove it's the same party that started the
+login, without ever handling a secret. The client generates a random `code_verifier`, sends only
+its SHA-256 hash (`code_challenge`) up front, and reveals the raw `code_verifier` only at the very
+last step; Salesforce re-hashes it and checks the two match before issuing a token. This is exactly
+what `assets/scripts/pkce-mcp-test.mjs` implements:
+
+```mermaid
+sequenceDiagram
+    actor Human
+    participant Client as MCP Client<br/>(pkce-mcp-test.mjs / any PKCE-capable agent)
+    participant Browser
+    participant SF as Salesforce<br/>login.salesforce.com or test.salesforce.com
+
+    Client->>Client: code_verifier = base64url(random 64 bytes)
+    Client->>Client: code_challenge = base64url(SHA256(code_verifier))
+    Client->>Browser: open /services/oauth2/authorize ?<br/>response_type=code&amp;client_id=&lt;consumer key&gt;<br/>&amp;redirect_uri=http://localhost:1717/OauthRedirect<br/>&amp;scope=mcp_api refresh_token<br/>&amp;code_challenge=&lt;challenge&gt;&amp;code_challenge_method=S256
+    Browser->>SF: GET authorize URL
+    SF-->>Human: login + consent screen (RemoteAccessAuthorizationPage)
+    Human->>SF: log in, click Allow
+    SF-->>Browser: 302 redirect_uri?code=&lt;auth code&gt;&amp;state=...
+    Browser->>Client: GET http://localhost:1717/OauthRedirect?code=...
+    Note over Client: local listener on the fixed callback<br/>captures the authorization code
+    Client->>SF: POST /services/oauth2/token<br/>grant_type=authorization_code&amp;code=&lt;auth code&gt;<br/>&amp;redirect_uri=...&amp;client_id=...&amp;code_verifier=&lt;verifier&gt;
+    SF->>SF: SHA256(code_verifier) == code_challenge sent earlier?
+    SF-->>Client: access_token + refresh_token (scope: mcp_api refresh_token)
+    Client->>Client: persist token (mcp-token.json)
+    Note over Client,SF: next run — grant_type=refresh_token,<br/>no browser, no human, fully headless
+```
+
+The human step (login + click Allow) happens **once**; the persisted refresh token is what makes
+every later `tools/call` in the architecture diagram above possible without a browser in the loop.
 
 ### The three-file ECA bundle `[org]`
 
