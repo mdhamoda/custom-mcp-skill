@@ -1,0 +1,43 @@
+Revenue Cloud Agent Skills (revSkills)
+Copyright (c) 2026 Manigandan Dhamodaran <Manigandan.dhamodaran@outlook.com>
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+package except in compliance with the License. You may obtain a copy of the License in
+the LICENSE file distributed with this package, or at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under
+the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied. See the License for the specific language governing
+permissions and limitations under the License.
+
+--------------------------------------------------------------------------------
+
+ATTRIBUTION
+
+This package — the Revenue Cloud Agent Skills, including every SKILL.md, reference,
+script, template, and packaged .skill file — was authored by Manigandan Dhamodaran. Each
+skill carries this attribution in its frontmatter (metadata.author) and a copyright
+notice comment.
+
+Per section 4 of the License, any project, repository, or distribution that uses,
+modifies, or redistributes these skills must retain this NOTICE file, the copyright
+notice, and the author attribution. Do not remove or alter the author attribution.
+
+You are free to use, modify, and redistribute these skills — including commercially —
+provided the above attribution and license terms are preserved.
+
+--------------------------------------------------------------------------------
+
+PROVENANCE & TRADEMARKS
+
+These skills are validated against the Salesforce Revenue Management Developer Guide
+v67.0 (Summer '26) and one configured Revenue Cloud org. They are doc-verified, not
+org-tested — see VERIFICATION.md.
+
+Salesforce, Revenue Cloud, and Agentforce are trademarks of Salesforce, Inc. This
+package is not affiliated with, sponsored by, or endorsed by Salesforce, Inc.
+
+The org-templates/ folder contains example Salesforce metadata; API names come from one
+org and must be confirmed against yours.
