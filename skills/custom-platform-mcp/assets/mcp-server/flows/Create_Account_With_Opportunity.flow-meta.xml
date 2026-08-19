@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <decisions>
+        <name>Create_Opportunity_Decision</name>
+        <label>Create Opportunity?</label>
+        <locationX>50</locationX>
+        <locationY>280</locationY>
+        <defaultConnectorLabel>No</defaultConnectorLabel>
+        <rules>
+            <name>Yes_Create_Opportunity</name>
+            <conditionLogic>and</conditionLogic>
+            <conditions>
+                <leftValueReference>createOpportunity</leftValueReference>
+                <operator>EqualTo</operator>
+                <rightValue><booleanValue>true</booleanValue></rightValue>
+            </conditions>
+            <connector><targetReference>Create_Opportunity</targetReference></connector>
+            <label>Yes</label>
+        </rules>
+    </decisions>
+    <description>Creates an account and, when requested, a related opportunity. Autolaunched so it can be exposed as an MCP tool.</description>
+    <environments>Default</environments>
+    <formulas>
+        <name>ResolvedCloseDate</name>
+        <dataType>Date</dataType>
+        <expression>TODAY() + 30</expression>
+    </formulas>
+    <formulas>
+        <name>ResolvedOppName</name>
+        <dataType>String</dataType>
+        <expression>IF(ISBLANK({!opportunityName}), {!accountName} &amp; " - New Business", {!opportunityName})</expression>
+    </formulas>
+    <interviewLabel>Create Account With Opportunity {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Create Account With Opportunity</label>
+    <processType>AutoLaunchedFlow</processType>
+    <recordCreates>
+        <name>Create_Account</name>
+        <label>Create Account</label>
+        <locationX>50</locationX>
+        <locationY>150</locationY>
+        <assignRecordIdToReference>accountId</assignRecordIdToReference>
+        <connector><targetReference>Create_Opportunity_Decision</targetReference></connector>
+        <inputAssignments>
+            <field>Industry</field>
+            <value><elementReference>industry</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Name</field>
+            <value><elementReference>accountName</elementReference></value>
+        </inputAssignments>
+        <object>Account</object>
+        <storeOutputAutomatically>false</storeOutputAutomatically>
+    </recordCreates>
+    <recordCreates>
+        <name>Create_Opportunity</name>
+        <label>Create Opportunity</label>
+        <locationX>200</locationX>
+        <locationY>400</locationY>
+        <assignRecordIdToReference>opportunityId</assignRecordIdToReference>
+        <inputAssignments>
+            <field>AccountId</field>
+            <value><elementReference>accountId</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Amount</field>
+            <value><elementReference>amount</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>CloseDate</field>
+            <value><elementReference>ResolvedCloseDate</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>Name</field>
+            <value><elementReference>ResolvedOppName</elementReference></value>
+        </inputAssignments>
+        <inputAssignments>
+            <field>StageName</field>
+            <value><stringValue>Prospecting</stringValue></value>
+        </inputAssignments>
+        <object>Opportunity</object>
+        <storeOutputAutomatically>false</storeOutputAutomatically>
+    </recordCreates>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector><targetReference>Create_Account</targetReference></connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <name>accountId</name>
+        <dataType>String</dataType>
+        <description>Record id of the account that was created.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <name>accountName</name>
+        <dataType>String</dataType>
+        <description>Name of the account to create. Required.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>amount</name>
+        <dataType>Currency</dataType>
+        <description>Monetary value of the opportunity. Optional.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <scale>2</scale>
+    </variables>
+    <variables>
+        <name>createOpportunity</name>
+        <dataType>Boolean</dataType>
+        <description>Set to true to also create an opportunity linked to the new account.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>industry</name>
+        <dataType>String</dataType>
+        <description>Industry of the account, for example Technology. Optional.</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <name>opportunityId</name>
+        <dataType>String</dataType>
+        <description>Record id of the opportunity created, or blank when none was requested.</description>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <name>opportunityName</name>
+        <dataType>String</dataType>
+        <description>Name of the opportunity. Defaults to the account name plus " - New Business".</description>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+</Flow>

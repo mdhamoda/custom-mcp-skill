@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ECA global OAuth settings.  Suffix is .ecaGlblOauth (abbreviated) - .ecaGlobalOauth FAILS.
+  Cannot deploy alone: "The external client app configured in your global OAuth Settings
+  doesn't have a valid OAuth settings configuration."  Deploy all three files together.
+
+  MULTIPLE CALLBACK URLs GO IN ONE ELEMENT, NEWLINE-SEPARATED  [org verified]
+    Claude    https://claude.ai/api/mcp/auth_callback
+    Cursor    http://localhost:8787/callback
+    Postman   https://oauth.pstmn.io/v1/callback   (web: /v1/browser-callback)
+    ChatGPT   copy from its Advanced settings
+    script    any registered URL, e.g. http://localhost:1717/OauthRedirect
+
+  isNamedUserJwtEnabled DEFAULTS FALSE - the setup guide says to enable it. Set it explicitly.
+  isConsumerSecretOptional + isPkceRequired = public-client PKCE, no client secret.
+
+  Fields the platform adds on retrieve (do not author): isClientCredentialsFlowEnabled,
+  isCodeCredFlowEnabled, isDPopEnabled, isDeviceFlowEnabled, isEnforceRefreshTokenTTL,
+  isRefreshTokenRotationEnabled, isTokenExchangeEnabled, isSecretRequiredForTokenExchange.
+
+  consumerKey is generated SERVER-SIDE - retrieve after deploy, never author it.
+-->
+<ExtlClntAppGlobalOauthSettings xmlns="http://soap.sforce.com/2006/04/metadata">
+    <callbackUrl>https://claude.ai/api/mcp/auth_callback
+http://localhost:1717/OauthRedirect</callbackUrl>
+    <externalClientApplication>McpClientApp</externalClientApplication>
+    <isConsumerSecretOptional>true</isConsumerSecretOptional>
+    <isIntrospectAllTokens>false</isIntrospectAllTokens>
+    <isNamedUserJwtEnabled>true</isNamedUserJwtEnabled>
+    <isPkceRequired>true</isPkceRequired>
+    <isSecretRequiredForRefreshToken>false</isSecretRequiredForRefreshToken>
+    <label>MCP Client App OAuth</label>
+    <shouldRotateConsumerKey>false</shouldRotateConsumerKey>
+    <shouldRotateConsumerSecret>false</shouldRotateConsumerSecret>
+</ExtlClntAppGlobalOauthSettings>

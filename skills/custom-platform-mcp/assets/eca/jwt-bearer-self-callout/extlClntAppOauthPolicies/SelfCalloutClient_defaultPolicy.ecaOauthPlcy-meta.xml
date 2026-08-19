@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  permittedUsersPolicyType=AdminApprovedPreAuthorized deliberately, not the AllSelfAuthorized
+  default: JWT Bearer Flow has no human in the loop to click Allow, so self-authorize mode can
+  never succeed here -- it needs a prior interactive approval that will never exist. Pre-authorize
+  every profile a calling user might actually run under (an org's internal service/integration
+  user profile, not just System Administrator) -- find real profile names with
+  SELECT Username, Name, Profile.Name FROM User WHERE IsActive = true rather than guessing.
+  See references/eca-and-testing.md §5.5.
+-->
+<ExtlClntAppOauthConfigurablePolicies xmlns="http://soap.sforce.com/2006/04/metadata">
+    <commaSeparatedProfile>{{PROFILE_1}}, {{PROFILE_2}}</commaSeparatedProfile>
+    <externalClientApplication>SelfCalloutClient</externalClientApplication>
+    <ipRelaxationPolicyType>Enforce</ipRelaxationPolicyType>
+    <isClientCredentialsFlowEnabled>false</isClientCredentialsFlowEnabled>
+    <isGuestCodeCredFlowEnabled>false</isGuestCodeCredFlowEnabled>
+    <isTokenExchangeFlowEnabled>false</isTokenExchangeFlowEnabled>
+    <label>SelfCalloutClient_defaultPolicy</label>
+    <permittedUsersPolicyType>AdminApprovedPreAuthorized</permittedUsersPolicyType>
+    <refreshTokenPolicyType>SpecificLifetime</refreshTokenPolicyType>
+    <refreshTokenValidityPeriod>90</refreshTokenValidityPeriod>
+    <refreshTokenValidityUnit>Days</refreshTokenValidityUnit>
+    <requiredSessionLevel>STANDARD</requiredSessionLevel>
+</ExtlClntAppOauthConfigurablePolicies>

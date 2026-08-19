@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtlClntAppGlobalOauthSettings xmlns="http://soap.sforce.com/2006/04/metadata">
+    <callbackUrl>https://localhost/oauth/callback</callbackUrl>
+    <!--
+      CRITICAL: this must be the certificate Salesforce ACTUALLY RETRIEVES for the Certificate
+      developer name below -- NOT the .crt content you originally uploaded when creating the
+      Certificate metadata record. Salesforce auto-generates its own internal signing cert for a
+      Certificate component and signs with THAT, silently, regardless of what public cert was
+      uploaded. Get the real one with:
+        sf project retrieve start --metadata "Certificate:<DeveloperName>" -o <alias>
+      then paste the retrieved .crt's PEM body here. Skipping this step produces
+      `invalid_client: invalid client credentials` that looks like a wrong-consumer-key problem
+      but isn't -- see references/eca-and-testing.md §5.4.
+    -->
+    <certificate>{{RETRIEVED_CERTIFICATE_PEM_BODY}}</certificate>
+    <consumerKey>{{GENERATED_ON_DEPLOY_THEN_RETRIEVE}}</consumerKey>
+    <externalClientApplication>SelfCalloutClient</externalClientApplication>
+    <isClientCredentialsFlowEnabled>false</isClientCredentialsFlowEnabled>
+    <isCodeCredFlowEnabled>false</isCodeCredFlowEnabled>
+    <isCodeCredPostOnly>false</isCodeCredPostOnly>
+    <isConsumerSecretOptional>true</isConsumerSecretOptional>
+    <isDPopEnabled>false</isDPopEnabled>
+    <isDeviceFlowEnabled>false</isDeviceFlowEnabled>
+    <isEnforceRefreshTokenTTL>true</isEnforceRefreshTokenTTL>
+    <isIntrospectAllTokens>false</isIntrospectAllTokens>
+    <isNamedUserJwtEnabled>false</isNamedUserJwtEnabled>
+    <isPkceRequired>true</isPkceRequired>
+    <isRefreshTokenRotationEnabled>true</isRefreshTokenRotationEnabled>
+    <isSecretRequiredForRefreshToken>false</isSecretRequiredForRefreshToken>
+    <isSecretRequiredForTokenExchange>false</isSecretRequiredForTokenExchange>
+    <isTokenExchangeEnabled>false</isTokenExchangeEnabled>
+    <label>Self Callout Client OAuth</label>
+    <shouldRotateConsumerKey>false</shouldRotateConsumerKey>
+    <shouldRotateConsumerSecret>false</shouldRotateConsumerSecret>
+</ExtlClntAppGlobalOauthSettings>

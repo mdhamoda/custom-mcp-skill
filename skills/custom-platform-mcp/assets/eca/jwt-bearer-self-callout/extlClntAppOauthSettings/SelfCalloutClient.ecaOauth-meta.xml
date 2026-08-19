@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtlClntAppOauthSettings xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+      RefreshToken is required here even though this flow never actually redeems a refresh token
+      (JWT Bearer mints a fresh assertion every call) -- omitting it produces:
+        invalid_request: "refresh_token scope is required and the connected app should be
+        installed and preauthorized."
+      See references/eca-and-testing.md §5.5.
+    -->
+    <commaSeparatedOauthScopes>Api, RefreshToken</commaSeparatedOauthScopes>
+    <externalClientApplication>SelfCalloutClient</externalClientApplication>
+    <label>Self Callout Client Scopes</label>
+</ExtlClntAppOauthSettings>

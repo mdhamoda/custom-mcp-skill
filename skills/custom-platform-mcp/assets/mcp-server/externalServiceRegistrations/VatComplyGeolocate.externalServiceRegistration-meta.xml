@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Worked example: a Custom-type ExternalServiceRegistration for a genuine, public, no-auth
+  external API (vatcomply.com), bound to the sibling namedCredentials/VatComplyApi.
+  Confirmed [org]: Status reaches Complete automatically once deployed together with the Named
+  Credential - no servers: block needed in the schema (the <namedCredential> field alone binds
+  the real endpoint; a servers: url using callout:<Name> caused a malformed double-resolved URL
+  at runtime - see references/external-service-registration.md §6.1).
+-->
+<ExternalServiceRegistration xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Worked example - wraps vatcomply.com's public, no-auth IP geolocation endpoint via a Custom-type ESR bound to the VatComplyApi Named Credential.</description>
+    <label>VatComplyGeolocate</label>
+    <namedCredential>VatComplyApi</namedCredential>
+    <operations>
+        <active>true</active>
+        <name>get_geolocate</name>
+    </operations>
+    <registrationProviderType>Custom</registrationProviderType>
+    <schema>openapi: 3.0.0
+info:
+  title: VatComplyGeolocate
+  description: >-
+    Worked example - real external API (vatcomply.com), pulled from its own live OpenAPI document.
+  version: 1.0.0
+paths:
+  /geolocate:
+    get:
+      operationId: get_geolocate
+      summary: Geolocate by IP
+      description: Detect visitor country from their IP address. Returns country details, coordinates, and currency.
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - iso2
+                  - iso3
+                  - country_code
+                  - name
+                  - numeric_code
+                  - phone_code
+                  - capital
+                  - currency
+                  - tld
+                  - region
+                  - subregion
+                  - latitude
+                  - longitude
+                  - emoji
+                properties:
+                  iso2:
+                    type: string
+                  iso3:
+                    type: string
+                  country_code:
+                    type: string
+                  name:
+                    type: string
+                  numeric_code:
+                    type: integer
+                  phone_code:
+                    type: string
+                  capital:
+                    type: string
+                  currency:
+                    type: string
+                  tld:
+                    type: string
+                  region:
+                    type: string
+                  subregion:
+                    type: string
+                  latitude:
+                    type: number
+                  longitude:
+                    type: number
+                  emoji:
+                    type: string
+                  ip:
+                    type: string
+</schema>
+    <schemaType>OpenApi3</schemaType>
+    <schemaUploadFileExtension>yaml</schemaUploadFileExtension>
+    <schemaUploadFileName>vatcomplygeolocate_openapi</schemaUploadFileName>
+    <serviceBinding>{"host":"","basePath":"/","allowedSchemes":[],"requestMediaTypes":[],"responseMediaTypes":[],"compatibleMediaTypes":{},"integrationFlags":null,"extensions":{}}</serviceBinding>
+</ExternalServiceRegistration>
