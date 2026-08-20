@@ -12,7 +12,14 @@
     script    any registered URL, e.g. http://localhost:1717/OauthRedirect
 
   isNamedUserJwtEnabled DEFAULTS FALSE - the setup guide says to enable it. Set it explicitly.
+  [org] Verified effect: true makes this ECA's issued access tokens real, decodable JWTs
+  (token_format:"jwt", RS256) instead of opaque strings - governs token SHAPE, unrelated to
+  which grant produced it. See references/eca-and-testing.md §1.2 and §5.7.
+
   isConsumerSecretOptional + isPkceRequired = public-client PKCE, no client secret.
+  [org] isPkceRequired appears platform-enforced true on this org regardless of what's deployed -
+  a false value was never observed to stick across a redeploy. Not something to rely on being
+  configurable; see references/eca-and-testing.md §1.2.
 
   Fields the platform adds on retrieve (do not author): isClientCredentialsFlowEnabled,
   isCodeCredFlowEnabled, isDPopEnabled, isDeviceFlowEnabled, isEnforceRefreshTokenTTL,

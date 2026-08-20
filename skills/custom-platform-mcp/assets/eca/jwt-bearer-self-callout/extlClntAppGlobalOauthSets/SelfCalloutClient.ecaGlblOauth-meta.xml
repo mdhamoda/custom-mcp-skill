@@ -22,8 +22,21 @@
     <isDPopEnabled>false</isDPopEnabled>
     <isDeviceFlowEnabled>false</isDeviceFlowEnabled>
     <isEnforceRefreshTokenTTL>true</isEnforceRefreshTokenTTL>
-    <isIntrospectAllTokens>false</isIntrospectAllTokens>
-    <isNamedUserJwtEnabled>false</isNamedUserJwtEnabled>
+    <!--
+      [org] true issues a real, decodable JWT access token (token_format:"jwt", RS256, real
+      sub/iss/aud/client_id claims) instead of an opaque string -- confirmed by manually
+      reconstructing the raw token request and decoding what came back. See
+      references/eca-and-testing.md §5.7.
+    -->
+    <isNamedUserJwtEnabled>true</isNamedUserJwtEnabled>
+    <!--
+      [org] Inert for JWT Bearer regardless of value -- this grant type never touches
+      /oauth2/authorize, so PKCE's rules have no code path to apply to. Also: this org appears to
+      enforce isPkceRequired:true as a platform baseline -- a deploy setting it false succeeds but
+      silently reverts to true shortly after, confirmed twice including through a full
+      disable-app/redeploy/re-enable cycle. Don't spend time fighting it; it doesn't block
+      anything here. See references/eca-and-testing.md §5.7 and §1.2.
+    -->
     <isPkceRequired>true</isPkceRequired>
     <isRefreshTokenRotationEnabled>true</isRefreshTokenRotationEnabled>
     <isSecretRequiredForRefreshToken>false</isSecretRequiredForRefreshToken>

@@ -117,6 +117,16 @@ work — see the §0/§1 correction above; the two are different claims.)
 | 9 | **Agentforce agent** | `??` | `??` — **do not assume `AGENT`**, see §1e | `??` | ⏳ untested |
 | 10 | **Prompt Builder template** | — | — | — | ✅ **`<prompts>` element, not `<tools>`** — see §1c |
 
+> 🔴 **Calling an `aa:` tool over MCP: the real `inputSchema` wraps arguments in an `inputs`
+> array, not flat top-level properties** `[org]`-confirmed by dumping the tool's actual advertised
+> `inputSchema` from a live `tools/list` response, not guessed. Because `@InvocableMethod` always
+> takes `List<T>`, the platform-generated MCP schema is `{"inputs": [{...one InvokeRequest...}]}` —
+> sending the fields flat (`{"endpointPath": "...", "httpMethod": "GET"}`) passes local JSON
+> validation fine but gets rejected server-side with a misleading, unrelated-looking error:
+> `"The HTTP entity body is required, but this request has no entity body."` (`JSON_PARSER_ERROR`).
+> Always call `tools/list` first and read the real `inputSchema` for the specific tool rather than
+> assuming a flat shape from the Apex `@InvocableVariable` field names alone.
+
 **Full authoring procedure for rows 6–8** — deploying the backing, the two required org-level
 Beta settings, the mandatory re-activate-in-API-Catalog-after-every-change rule, runbooks, and the
 complete `ae:` investigation — lives in

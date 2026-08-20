@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  External Client App - header file.  Deploy WITH the four other files in this bundle (§5.6 -
+  five files, not three, for a JWT-Bearer-only ECA); they fail alone.
+  Filename = API name; every sibling's <externalClientApplication> must match it exactly.
+
+  This uses only 5 of this type's 11 fields - the rest (contactPhone, iconUrl, infoUrl, logoUrl,
+  managedType, orgScopedExternalApp) are cosmetic/internal-only/not-yet-active and unused by any
+  procedure in this skill. Full field reference: references/eca-and-testing.md §1.1.
+-->
 <ExternalClientApplication xmlns="http://soap.sforce.com/2006/04/metadata">
     <contactEmail>admin@example.com</contactEmail>
     <description>JWT Bearer Flow client used exclusively by a tool's own outbound self-callout (e.g. InvokeSalesforceApiAction.cls calling back into this same org's REST/Connect API) -- server-to-server, no MCP scope, distinct from any MCP-facing client-consent ECA.</description>

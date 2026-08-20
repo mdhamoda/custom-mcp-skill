@@ -3,6 +3,10 @@
   External Client App - header file.  Deploy WITH the two OAuth siblings; they fail alone.
   Filename = API name; every sibling's <externalClientApplication> must match it exactly.
   distributionState: Local (this org) | Packageable (2GP distribution)
+
+  This uses only 5 of this type's 11 fields - the rest (contactPhone, iconUrl, infoUrl, logoUrl,
+  managedType, orgScopedExternalApp) are cosmetic/internal-only/not-yet-active and unused by any
+  procedure in this skill. Full field reference: references/eca-and-testing.md §1.1.
 -->
 <ExternalClientApplication xmlns="http://soap.sforce.com/2006/04/metadata">
     <contactEmail>admin@example.com</contactEmail>
