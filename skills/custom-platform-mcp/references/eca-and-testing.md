@@ -70,6 +70,27 @@ configured in your global OAuth Settings doesn't have a valid OAuth settings con
 
 `distributionState`: `Local` (this org) or `Packageable` (2GP distribution).
 
+**Full `ExternalClientApplication` field reference `[doc]`** — the minimal shape above only uses
+five; the rest exist but are cosmetic/optional for an MCP-purposed ECA (none are required by any
+procedure in this skill):
+
+| Field | Type | Notes |
+|---|---|---|
+| `contactEmail` | string | admin contact Salesforce uses for this app |
+| `contactPhone` | string | admin contact phone — not used anywhere in this skill's flows |
+| `description` | string | shown in Setup |
+| `distributionState` | enum | `Local` \| `Packaged` (`AutoInstalled`/`Managed` are internal-only) |
+| `iconUrl` | string | Setup-display icon image URL — cosmetic |
+| `infoUrl` | string | **"Reserved for future use"** per the official field reference — do not author expecting an effect |
+| `isProtected` | boolean | package-visibility control; default `false` |
+| `label` | string | display label |
+| `logoUrl` | string | Setup-display logo image URL — cosmetic |
+| `managedType` | enum | **internal use only** per the official reference — never author |
+| `orgScopedExternalApp` | string | `[Org_ID]:[App_Name]` — either hand-set or auto-generated on first deploy; not something this skill's procedures need to set explicitly |
+
+Requires the **"Opt in to External Client Apps"** permission enabled in Setup before any ECA of
+this type can be created at all — a prerequisite above and beyond the three-file bundle itself.
+
 ### 1.2 `extlClntAppGlobalOauthSets/<Name>.ecaGlblOauth-meta.xml`
 
 ```xml
@@ -100,7 +121,22 @@ http://localhost:1717/OauthRedirect</callbackUrl>
   ECA this skill creates, instead of needing a follow-up deploy discovered only after a client
   integration has already failed once — which is exactly what happened before this line existed.
 - `isNamedUserJwtEnabled` — **defaults `false`; the setup guide says to enable it. Set it explicitly.**
+  `[org]` Verified effect (§5.2 revisits this for the self-callout case): with it `true`, the access
+  token this ECA issues comes back **`token_format: "jwt"`** — a real 3-segment, decodable,
+  `RS256`-signed JWT (`typ:"JWT"`, real `sub`/`iss`/`aud`/`client_id` claims) — instead of an opaque
+  string. Confirmed on both a PKCE-issued token and a JWT-Bearer-issued token; it governs the
+  **issued token's shape**, unrelated to which grant type produced it.
 - `isConsumerSecretOptional: true` + `isPkceRequired: true` = public-client PKCE, no secret. Verified.
+- 🔴 **`isPkceRequired` is platform-enforced `true` on this org — a deploy setting it `false`
+  succeeds but does not stick.** `[org]`-confirmed twice: deployed `false` directly (succeeded,
+  `isPkceRequired` read back `true` minutes later with no other change in between), then repeated
+  the full disable-app → deploy `false` → re-enable-app sequence (succeeded at every step, same
+  silent revert to `true` afterward). Whatever mechanism resets it, it isn't source-tracking
+  staleness — each attempt started from a fresh `--ignore-conflicts` retrieve of the live value.
+  **Practical consequence: treat `isPkceRequired: true` as a fixed platform baseline for this org,
+  not a configurable toggle** — don't spend time trying to turn it off, including on an
+  ECA that only ever uses JWT Bearer (§5.7 covers why the flag is inert there anyway, so this
+  doesn't block anything).
 - Fields the platform adds on retrieve (do not need authoring): `isClientCredentialsFlowEnabled`,
   `isCodeCredFlowEnabled`, `isDPopEnabled`, `isDeviceFlowEnabled`, `isEnforceRefreshTokenTTL`,
   `isRefreshTokenRotationEnabled`, `isTokenExchangeEnabled`, `isSecretRequiredForTokenExchange`.
@@ -658,3 +694,37 @@ is fine.
 class → real MCP `tools/call`), not before: `assets/eca/jwt-bearer-self-callout/` (the five-file
 ECA bundle, placeholder-named) and `assets/mcp-server/classes/JwtAuthHelper.cls` +
 `InvokeSalesforceApiAction.cls` (the updated tool, no more `getSessionId()`).
+
+### 5.7 `isPkceRequired` and `isNamedUserJwtEnabled` on a JWT-Bearer-only ECA `[org]`
+
+Two fields on `ExtlClntAppGlobalOauthSettings` are easy to assume matter here, in opposite
+directions — one genuinely doesn't, one genuinely does, confirmed by manually reconstructing the
+token request byte-for-byte (bypassing `Auth.JWTBearerTokenExchange` entirely) rather than trusting
+the SDK's black box.
+
+**`isPkceRequired` is inert for this grant type, regardless of its value.** JWT Bearer never sends
+a request to `/oauth2/authorize` at all — the manually-built request that proved this was a single
+`POST /oauth2/token` with exactly two form parameters, `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`
+and `assertion=<signed JWT>`. No `client_id`, `redirect_uri`, or `code_verifier` anywhere. PKCE's
+rules simply have no code path to apply to here. This held true — self-callout kept succeeding —
+whether the field read `true` or the (unsuccessful) `false` deploy attempt from §1.2's finding.
+Leave it alone; it isn't worth fighting the platform over on this ECA.
+
+**`isNamedUserJwtEnabled` genuinely changes this ECA's own behavior:** the token this ECA issues
+(from the JWT Bearer exchange itself) becomes a real, decodable JWT — `token_format: "jwt"` in the
+raw token response, `alg: RS256`, a real `sub`/`iss`/`aud`/`client_id` payload — instead of an
+opaque string. Confirmed by decoding the actual `access_token` returned from a manually-built raw
+request, not by reading the field's description.
+
+**No separate "Enable JWT Bearer Flow" field exists anywhere in this schema.** Checked exhaustively
+across every ECA-related object this org exposes — `ExtlClntAppGlobalOauthSettings`,
+`ExtlClntAppOauthSettings` (scopes only), `ExtlClntAppOauthConfigurablePolicies` (flow-enablement
+fields present: `IsClientCredentialsFlowEnabled`, `IsGuestCodeCredFlowEnabled`,
+`IsTokenExchangeFlowEnabled` — no JWT-Bearer equivalent), `ExtlClntAppConfigurablePolicies` (app
+enablement only), and `ExtlClntAppOauthSecuritySettings` (no record exists for either ECA this
+skill tested against — retrieve returns "cannot be found", matching §0's "retrieve-only, not
+auto-created" note). A Setup page section labeled "Enable JWT Bearer Flow" almost certainly renders
+`isNamedUserJwtEnabled` under a different heading than its own field description uses — Setup has
+already done this once in this same investigation (§ above). JWT Bearer *inbound* support itself
+needs no toggle at all: it's available to any ECA that's `IsEnabled`, correctly scoped
+(`Api, RefreshToken`), and pre-authorized (§5.5) — there's nothing further to switch on.
