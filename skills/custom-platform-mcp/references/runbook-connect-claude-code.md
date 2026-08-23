@@ -90,14 +90,14 @@ type; it does not (yet) document call-argument shape — this is the gap that ca
 
 ```
 initialize OK — serverInfo: {"name":"revenueManagementMcp","version":"1.0.0"}
-tools/list OK — 3 tool(s): REV000016_BizApiCatalogServiceTool, REV000016_ProductCatalogStructureServiceTool, REV000016_InvokeSalesforceApiActionTool
+tools/list OK — 3 tool(s): BizApiCatalogServiceTool, ProductCatalogStructureServiceTool, InvokeSalesforceApiActionTool
 ```
 
 Rerun with a saved token: `Reused saved refresh token — no browser consent needed this run.` — the
 "only step 7 needs a person, and only once" claim in `eca-and-testing.md` §1.6 holds in practice, as
 long as the rotation footgun above is respected.
 
-With the `inputs`-array fix, `tools/call REV000016_InvokeSalesforceApiActionTool` with
+With the `inputs`-array fix, `tools/call InvokeSalesforceApiActionTool` with
 `{"inputs":[{"endpointPath":"/services/data/v67.0/limits","httpMethod":"GET"}]}` cleared the
 `JSON_PARSER_ERROR` and reached real Apex execution — a separate `System.UnexpectedException:
 Script-thrown exception` surfaced there (no `ApexLog` was captured for it — no `TraceFlag` was active

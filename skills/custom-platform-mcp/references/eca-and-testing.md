@@ -496,7 +496,7 @@ is a **UI/browser-session-scoped artifact** — it only exists for auth mechanis
 session (a logged-in UI session, `sf`'s own CLI session). `UserInfo.getUserId()`/`getUsername()`
 are different: they're properties of the **resolved running user**, available in any Apex
 execution context regardless of what authenticated it — an MCP `tools/call`'s `mcp_api`-scoped
-OAuth token resolves a running user just fine (proof: `REV000015_RepDailySummaryService.cls`'s
+OAuth token resolves a running user just fine (proof: `RepDailySummaryService.cls`'s
 `UserInfo.getUserId()` works correctly when called via MCP), it just never had a session to hand
 back through `getSessionId()`. Don't reach for session ID as a generic "who is this and can I
 prove it" credential — it's narrower than that.
@@ -508,7 +508,7 @@ arbitrary caller-supplied credential defeats the point of the tool authenticatin
 
 #### 5.1a `try/catch` does NOT stop this — and fixing one class doesn't fix its siblings `[org]`
 
-Two more real classes hit the identical bug after `REV000016_InvokeSalesforceApiAction` was
+Two more real classes hit the identical bug after `InvokeSalesforceApiAction` was
 already fixed — both made their OWN internal HTTP callout (a live-schema reflection call, a
 Connect API product-detail call) authenticated the same broken way, and neither had been
 touched during the original fix because the original investigation was scoped to one class, not

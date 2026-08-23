@@ -234,8 +234,8 @@ the script.
 
    🔴 **Same no-underscore naming rule that applies to every custom-tool-backing metadata type**
    (`tool-backing-specs.md` §1) applies to the `ApiNamedQuery` DeveloperName too — `[org]`-
-   confirmed: `REV000015_UserIdByEmail` failed deploy with *"API Name must contain only letters
-   and numbers, start with a letter … and cannot be empty."*; `REV000015UserIdByEmail` (no
+   confirmed: `Acme_UserIdByEmail` failed deploy with *"API Name must contain only letters
+   and numbers, start with a letter … and cannot be empty."*; `AcmeUserIdByEmail` (no
    underscore) deployed clean.
 2. **Manual, required, no API path exists:** Setup → API Catalog → find the query → **Activate**.
    The platform creates its own `<QueryName>_nquery` `ExternalServiceRegistration`,

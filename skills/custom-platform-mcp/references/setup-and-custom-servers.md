@@ -185,7 +185,7 @@ sufficient**:
 reopens system-level access even though the tool still looks correct from the outside — same
 OAuth flow, same session context, same "runs as the authenticated user" appearance. There is no
 warning at deploy time for this gap on the Apex side; it just quietly under-enforces. (The
-`REV000015RepDailySummaryService`-style pattern — `global with sharing` **+** `WITH USER_MODE`
+`RepDailySummaryService`-style pattern — `global with sharing` **+** `WITH USER_MODE`
 throughout every query — is the correct shape; either half missing breaks the guarantee.)
 
 ### 4.3 Custom Flow tools (`fa:`) — the default is the OPPOSITE of safe
