@@ -74,9 +74,9 @@ directly — see §1b. `psmcps:` may also construct-then-deploy per the §0 tabl
 
 🔴 **Naming rule that applies to EVERY custom-tool-backing metadata type in this skill, not just
 one:** the API/developer name must be plain alphanumeric, starting with a letter — **no
-underscores.** `[org]`-confirmed on `ApiNamedQuery`: `REV000015_UserIdByEmail` failed deploy with
+underscores.** `[org]`-confirmed on `ApiNamedQuery`: `Acme_UserIdByEmail` failed deploy with
 *"API Name must contain only letters and numbers, start with a letter … and cannot be empty."*;
-renaming to `REV000015UserIdByEmail` deployed clean. This is the same constraint already known for
+renaming to `AcmeUserIdByEmail` deployed clean. This is the same constraint already known for
 `McpServerDefinition` server names — stated once here so it isn't rediscovered per metadata type.
 
 🔎 **A custom `McpServerDefinition`'s `DeveloperName` case is preserved verbatim in the real
