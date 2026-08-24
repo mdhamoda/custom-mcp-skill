@@ -434,6 +434,20 @@ it is the schema of record for element order and identifier shapes.
 ⚠️ **A same-named deploy OVERWRITES — `<tools>` is replaced wholesale**, so a one-tool file
 silently drops a tool from a two-tool server.
 
+## 7d. Wiring a tool to an HXL widget `[org]` verified
+
+**MCP-definition wiring only** — this skill doesn't author widgets. Full metadata-type breakdown
+and doc links: [`hxl-ui-resource-wiring.md`](references/hxl-ui-resource-wiring.md).
+
+A tool with an already-built companion widget needs a `<uiResource>` tag inside its `<tools>` entry
+plus a **sibling** `<resources>` block whose `resourceUri` points at the **envelope**
+`LightningTypeBundle` (not the widget bundle): `ui://widget/lightningType/c__<EnvelopeCLTName>`.
+`mcpserverdef-toolkit.mjs add-tool` supports this via optional `--ui-resource-name <Name>
+--ui-envelope-clt <BundleName>` — verifies the envelope CLT exists locally before wiring a dead
+reference. Deploy the `McpServerDefinition` change together with any changed CLT/widget files in one
+`sf project deploy start` call — cross-referencing `LightningTypeBundle`/`UiWidgetBundle` components
+only resolve within the same transaction.
+
 ## 8. Known gaps — do not bluff these
 
 1. **Server/tool discovery for inactive servers** — no API path found at 67.0. Catalog-driven only.

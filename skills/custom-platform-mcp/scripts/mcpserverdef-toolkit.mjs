@@ -101,8 +101,33 @@
 //   open-world   "This tool may send data to systems outside Salesforce (e.g., external APIs,
 //                email services)."
 //
+// --ui-resource-name/--ui-envelope-clt (add-tool only, OPTIONAL) - binds the tool to an HXL widget.
+// [org]-confirmed pattern (deployed and verified live, REV-000019 getOrUpdateRecord,
+// scratchRC-Test, 2026-08-23; official doc:
+// developer.salesforce.com/docs/platform/hxl/guide/hxl-mcp-server.html): a tool with a companion
+// widget needs a <uiResource> tag INSIDE its <tools> block, plus a SIBLING <resources> block whose
+// resourceUri points at the ENVELOPE LightningTypeBundle (not the widget bundle, not the response
+// CLT bundle) as "ui://widget/lightningType/c__<EnvelopeCLTName>". Full metadata-type breakdown
+// and doc links: references/hxl-ui-resource-wiring.md - MCP wiring only, not widget authoring
+// (that's platform-mcp-tool-widget-coordinate's job, or the still-parked custom-sf-headless-
+// experience skill proposal for org enablement). This flag pair only wires an ALREADY-BUILT
+// widget/CLT trio onto an already-defined tool; it does not create them.
+//   --ui-resource-name <Name>       becomes both <uiResource> on the tool AND <resourceName> on
+//                                   the <resources> entry (this session used the widget bundle's
+//                                   own name, e.g. getOrUpdateRecordWidget - a convention, not a
+//                                   platform requirement).
+//   --ui-envelope-clt <BundleName>  the envelope LightningTypeBundle's directory name under
+//                                   force-app/main/default/lightningTypes/ - verified to exist
+//                                   locally before wiring (dead reference otherwise). Builds
+//                                   resourceUri as ui://widget/lightningType/c__<BundleName>.
+//   --ui-resource-title <Title>     optional, defaults to "<Name> Resource".
+//   Reminder (not enforced by this script): deploy the envelope CLT + response CLT + widget +
+//   this McpServerDefinition change TOGETHER in one `sf project deploy start` call - cross-
+//   referencing LightningTypeBundle/UiWidgetBundle components only resolve within the same
+//   transaction (see references/hxl-ui-resource-wiring.md).
+//
 // Usage:
-//   node mcpserverdef-toolkit.mjs add-tool ae|ar <ClassName> --operation <RealMethodName> --description <...> --returns <...> --read-only true|false --destructive true|false --idempotent true|false --open-world true|false --server <McpServerDefName> [--org <alias>] [--deploy]
+//   node mcpserverdef-toolkit.mjs add-tool ae|ar <ClassName> --operation <RealMethodName> --description <...> --returns <...> --read-only true|false --destructive true|false --idempotent true|false --open-world true|false --server <McpServerDefName> [--ui-resource-name <Name> --ui-envelope-clt <BundleName> [--ui-resource-title <Title>]] [--org <alias>] [--deploy]
 //   node mcpserverdef-toolkit.mjs add-tool aa <ClassName> --description <...> --returns <...> --read-only true|false --destructive true|false --idempotent true|false --open-world true|false --server <McpServerDefName> [--org <alias>] [--deploy]
 //   node mcpserverdef-toolkit.mjs add-tool fa <FlowName> --description <...> --returns <...> --read-only true|false --destructive true|false --idempotent true|false --open-world true|false --server <McpServerDefName> [--org <alias>] [--deploy]
 //   node mcpserverdef-toolkit.mjs add-tool nq <QueryName> --description <...> --returns <...> --read-only true|false --destructive true|false --idempotent true|false --open-world true|false --server <McpServerDefName> [--operation <override>] [--org <alias>] [--deploy]
@@ -114,6 +139,8 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+const LIGHTNING_TYPES_DIR_NAME = "lightningTypes";
 
 const HERE = new URL(".", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 // HERE = .../.claude/skills/custom-platform-mcp/scripts/ -- reaching the actual project root
@@ -236,6 +263,12 @@ if (cmd === "add-tool") {
     console.error("      psmcps only: [--construct --standard-server <ns.server>] builds the identifier from");
     console.error("      the documented pattern when adopt-mode finds no existing row, instead of failing.");
     console.error("      Not the default -- adopt-first stays the verified-safe path whenever a row exists.");
+    console.error("");
+    console.error("OPTIONAL, any add-tool prefix: [--ui-resource-name <Name> --ui-envelope-clt <BundleName>");
+    console.error("  [--ui-resource-title <Title>]] wires this tool to an ALREADY-BUILT HXL widget --");
+    console.error("  <BundleName> must be an existing LightningTypeBundle dir under");
+    console.error("  force-app/main/default/lightningTypes/ (verified before wiring). See");
+    console.error("  references/hxl-ui-resource-wiring.md for the metadata types and the doc links.");
     console.error("");
     console.error("--description and --returns are BOTH REQUIRED and get combined into <descriptionOverride>");
     console.error("- the ONLY text a calling agent (Claude, GPT, any MCP client) has to decide whether/how to");
@@ -426,6 +459,38 @@ if (cmd === "add-tool") {
   const serverPath = `${MCP_DIR}/${serverName}.mcpServerDefinition-meta.xml`;
   if (!existsSync(serverPath)) { console.error(`Server definition not found locally: ${serverPath} - retrieve it first.`); process.exit(1); }
 
+  // --ui-resource-name/--ui-envelope-clt: OPTIONAL HXL widget binding. See the script header
+  // comment for the full pattern and references/hxl-ui-resource-wiring.md for the metadata-type
+  // breakdown. This only WIRES an already-built widget/CLT trio - it never authors them.
+  const uiResourceName = arg("--ui-resource-name");
+  const uiEnvelopeClt = arg("--ui-envelope-clt");
+  const uiResourceTitle = arg("--ui-resource-title", uiResourceName ? `${uiResourceName} Resource` : undefined);
+  let uiResourceBlock = "";
+  let uiResourceTag = "";
+  if (uiResourceName || uiEnvelopeClt) {
+    if (!uiResourceName || !uiEnvelopeClt) {
+      console.error("FAILED: --ui-resource-name and --ui-envelope-clt must be passed together (both or neither).");
+      process.exit(1);
+    }
+    const envelopeCltPath = `${REPO}/force-app/main/default/${LIGHTNING_TYPES_DIR_NAME}/${uiEnvelopeClt}/schema.json`;
+    if (!existsSync(envelopeCltPath)) {
+      console.error(`FAILED: envelope LightningTypeBundle "${uiEnvelopeClt}" not found locally at ${envelopeCltPath}.`);
+      console.error(`  --ui-envelope-clt must name an EXISTING envelope CLT bundle directory (deploy it first) -`);
+      console.error(`  this script wires an already-built widget, it doesn't create one. See`);
+      console.error(`  references/hxl-ui-resource-wiring.md.`);
+      process.exit(1);
+    }
+    console.log(`OK - envelope LightningTypeBundle "${uiEnvelopeClt}" found locally.`);
+    uiResourceTag = `        <uiResource>${esc(uiResourceName)}</uiResource>\n`;
+    uiResourceBlock = `    <resources>
+        <resourceName>${esc(uiResourceName)}</resourceName>
+        <resourceUri>ui://widget/lightningType/c__${esc(uiEnvelopeClt)}</resourceUri>
+        <resourceTitle>${esc(uiResourceTitle)}</resourceTitle>
+        <description>Backs the widget-referencing CLT (c__${esc(uiEnvelopeClt)}) for the ${esc(target)} tool.</description>
+    </resources>
+`;
+  }
+
   const existing = readFileSync(serverPath, "utf8");
   const toolBlock = `    <tools>
         <apiDefinition>
@@ -441,11 +506,11 @@ if (cmd === "add-tool") {
         <returnDirect>false</returnDirect>
         <toolName>${esc(target)}Tool</toolName>
         <toolTitle>${esc(target)}</toolTitle>
-    </tools>
-</McpServerDefinition>`;
+${uiResourceTag}    </tools>
+${uiResourceBlock}</McpServerDefinition>`;
   const updated = existing.replace(/<\/McpServerDefinition>\s*$/, toolBlock + "\n");
   writeFileSync(serverPath, updated);
-  console.log(`OK - appended ${identifier} to ${serverName}`);
+  console.log(`OK - appended ${identifier} to ${serverName}${uiResourceName ? ` (wired to widget resource "${uiResourceName}")` : ""}`);
   const ok = dryRunValidate(serverPath);
   if (ok && has("--deploy")) realDeploy(serverPath);
 
