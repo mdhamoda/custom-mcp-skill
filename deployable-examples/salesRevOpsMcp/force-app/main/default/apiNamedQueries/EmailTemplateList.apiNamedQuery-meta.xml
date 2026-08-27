@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ApiNamedQuery xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <body2
+  >SELECT Id, Name, Subject, Description, FolderName, HtmlValue FROM EmailTemplate WHERE IsActive = true ORDER BY FolderName, Name</body2>
+    <description
+  >Lists every active email template the rep can use for a customer follow-up, with its folder/category and full HTML body, so Claude can present options grouped by kind of follow-up AND show the rep what will actually be sent before they confirm.</description>
+    <masterLabel>Email Template List</masterLabel>
+</ApiNamedQuery>
