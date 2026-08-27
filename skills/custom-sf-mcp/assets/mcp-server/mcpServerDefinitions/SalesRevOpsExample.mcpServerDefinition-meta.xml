@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  EXAMPLE ARTIFACT - custom-sf-mcp skill. A full worked "combined" MCP server: 17 tools spanning
+  every custom-tool backing type covered by this skill (aa:, fa:, nq:, and re-served psmcps:
+  standard tools) in one server, plus a generic any-record read/write tool. Scrubbed/renamed from
+  a real, org-verified deployment (scratchRC-Test, API v67.0) — every apiIdentifier below is a
+  real, working shape, not invented.
+
+  BACKING FILES (this same assets/mcp-server/ tree):
+    classes/RepDailySummaryService.cls, GetRecordLinkService.cls, SummarizeRecordService.cls,
+      GetComposeEmailLinkService.cls, BizApiCatalogService.cls, ProductCatalogStructureService.cls,
+      InvokeSalesforceApiAction.cls, RecordAccessService.cls   (aa: tools)
+    flows/SendCustomerEmail.flow-meta.xml                      (fa: tool)
+    apiNamedQueries/AccountInfo, ContactsByAccount, EmailTemplateList,
+      UserIdByEmail .apiNamedQuery-meta.xml                    (nq: tools)
+    (soqlQuery / createSobjectRecordTool / updateSobjectRecordTool / updateRelatedRecordTool
+     need NO backing file at all — they re-serve platform.sobject-all / platform.sobject-mutations
+     standard tools via psmcps:, verbatim)
+
+  nq: TOOLS NEED A MANUAL ACTIVATE STEP PER ORG — see references/hxl-ui-resource-wiring.md's
+  sibling reference-service-registration.md §5. Deploying the ApiNamedQuery files is not enough:
+  Setup -> API Catalog -> find each query -> Activate. That is what generates the real
+  ExternalServiceRegistration (<QueryName>_nquery) this server's nq: identifiers point at. A
+  hand-authored/copied ESR for this type is a dead orphan, never selectable — do not attempt to
+  deploy one.
+
+  ProductCatalogStructureService/InvokeSalesforceApiAction/BizApiCatalogService mint their own JWT
+  Bearer self-callout token (see those classes' JWT_CONSUMER_KEY/JWT_CERTIFICATE_NAME placeholders)
+  — wire up the JWT Bearer self-callout ECA set (assets/eca/jwt-bearer-self-callout/) and fill in
+  those two constants before calling them, or they fail at the token-mint step.
+
+  sendCustomerEmail's picker (via ComposeAndSendEmail.flow-meta.xml, not itself an MCP tool) filters
+  EmailTemplate by FolderName = "Customer Follow-Up" — create that folder + templates in your org,
+  or the picker returns an empty list.
+-->
+<McpServerDefinition xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Sales rep + Revenue Cloud toolkit for RevOps / product-to-cash operations: daily rep digest, follow-up email, account/contact lookups, generic record read/write, RC business-API discovery, PCM structure, and a general standard-API caller.</description>
+    <masterLabel>Sales Rev Ops Example</masterLabel>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-RepDailySummaryService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>RepDailySummaryService</operation>
+        </apiDefinition>
+        <descriptionOverride>Builds an end-of-day digest for a sales rep: an account summary, today's call/task activity, a four-part opportunity summary (changed today, full pipeline by stage, won/lost today, renewals due within 14 days), and rule-based next-step suggestions each traceable to the rule that produced it -- then emails the digest to that rep. Scoped strictly to the accounts the rep owns; defaults to the calling user, or a specific rep by email if given.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>false</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>getRepDailySummary</toolName>
+        <toolTitle>Get Rep Daily Summary</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>nq:UserIdByEmail_nquery</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>UserIdByEmail</operation>
+        </apiDefinition>
+        <descriptionOverride>Resolves a sales rep's Salesforce User Id and Name from their email address. A simple, direct lookup -- no digest data, just identity resolution.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>false</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>findUserIdByEmail</toolName>
+        <toolTitle>Find User Id By Email</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>fa:flow-SendCustomerEmail</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>SendCustomerEmail</operation>
+        </apiDefinition>
+        <descriptionOverride>Sends a customer follow-up email to a Contact immediately -- "Claude Send". Templated (pass emailTemplateId) or custom (pass subject + body). Before calling this, ask the rep whether they want Claude to send it now, or would rather review/edit and send it themselves in Salesforce (use getComposeEmailLink for that path instead). Call ONLY after the rep has explicitly confirmed the specific content and recipient AND chosen this send path -- never speculatively. This is an irreversible external action: it sends a real email and logs it to the Contact's Activity History.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>false</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>sendCustomerEmail</toolName>
+        <toolTitle>Send Customer Email</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>nq:EmailTemplateList_nquery</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>EmailTemplateList</operation>
+        </apiDefinition>
+        <descriptionOverride>Lists every active email template available for a customer follow-up, with its folder/category AND its full HTML body -- show the rep the actual content before they confirm a send.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>false</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>listCustomerEmailTemplates</toolName>
+        <toolTitle>List Customer Email Templates</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>nq:AccountInfo_nquery</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>AccountInfo</operation>
+        </apiDefinition>
+        <descriptionOverride>Gets key details for one Account by Id -- industry, type, phone, website, employee count, owner -- plus its Contacts (so the number of contacts is just the length of that list). Use this to answer "tell me about this account" or before deciding who to email at it.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>false</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>getAccountInfo</toolName>
+        <toolTitle>Get Account Info</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>nq:ContactsByAccount_nquery</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>ContactsByAccount</operation>
+        </apiDefinition>
+        <descriptionOverride>Lists every Contact on an Account by Id -- name, email, title. No single "primary contact" is designated -- if there are multiple contacts, ask the rep which one before calling sendCustomerEmail.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>false</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>listContactsByAccount</toolName>
+        <toolTitle>List Contacts By Account</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-GetRecordLinkService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>GetRecordLinkService</operation>
+        </apiDefinition>
+        <descriptionOverride>Builds a Salesforce record link for any object type from its Id -- works for Accounts, Opportunities, Tasks, Contacts, or anything else, no need to know the object type in advance. Use this to give the rep a clickable link to any record mentioned in a response.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>getRecordLink</toolName>
+        <toolTitle>Get Record Link</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-SummarizeRecordService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>SummarizeRecordService</operation>
+        </apiDefinition>
+        <descriptionOverride>Gets a flat summary of the standard fields on any record, given its sObject type and Id -- works generically for any object, not just the ones with a dedicated tool. Use this for "tell me about this record" when there's no more specific tool for that object type.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>summarizeRecord</toolName>
+        <toolTitle>Summarize Record</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-GetComposeEmailLinkService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>GetComposeEmailLinkService</operation>
+        </apiDefinition>
+        <descriptionOverride>Builds a link to Salesforce's own Compose Email screen -- "Salesforce Send". Use this instead of sendCustomerEmail when the rep wants to review, edit, or personalize the content themselves before sending, rather than have Claude send it directly. Pass emailTemplateId if a template was already chosen in the conversation to skip straight to the compose screen.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>getComposeEmailLink</toolName>
+        <toolTitle>Get Compose Email Link</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>psmcps:platform.sobject-all:soqlQuery</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>soqlQuery</operation>
+        </apiDefinition>
+        <descriptionOverride>Runs a SOQL query against any Salesforce object, respecting the calling rep's own permissions (same enforcement as the standard sobject-all server -- object CRUD, field-level security, and sharing rules all apply). Use this for ad hoc lookups no dedicated tool on this server covers.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>soqlQuery</toolName>
+        <toolTitle>SOQL Query</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>psmcps:platform.sobject-mutations:createSobjectRecord</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>createSobjectRecord</operation>
+        </apiDefinition>
+        <descriptionOverride>Creates a new record for any Salesforce object, given its sObject type and a map of field values. This is a real, irreversible write -- call ONLY after the rep has explicitly confirmed the object type and field values; never speculatively.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>false</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>createSobjectRecordTool</toolName>
+        <toolTitle>createSobjectRecord</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>psmcps:platform.sobject-mutations:updateSobjectRecord</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>updateSobjectRecord</operation>
+        </apiDefinition>
+        <descriptionOverride>Updates one or more fields on a single existing Salesforce record, identified by sObject type and Id. This is a real, irreversible write -- call ONLY after the rep has explicitly confirmed the specific record, field(s), and new value(s); never speculatively.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>updateSobjectRecordTool</toolName>
+        <toolTitle>updateSobjectRecord</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>psmcps:platform.sobject-mutations:updateRelatedRecord</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>updateRelatedRecord</operation>
+        </apiDefinition>
+        <descriptionOverride>Updates one or more fields on a record related to a given parent record via a relationship path (e.g. update a Contact through an Account's relationship), without needing the related record's Id directly. This is a real, irreversible write -- call ONLY after the rep has explicitly confirmed the specific parent record, relationship, field(s), and new value(s); never speculatively.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>updateRelatedRecordTool</toolName>
+        <toolTitle>updateRelatedRecord</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-BizApiCatalogService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>BizApiCatalogService</operation>
+        </apiDefinition>
+        <descriptionOverride>Lists Revenue Cloud business-process APIs -- sales transaction/DRO, asset lifecycle, billing/invoicing/payments, usage/entitlements, and pricing -- each with its real endpoint, description, and live input/output schema where the platform exposes it. This tool only LISTS APIs, it does not call them: to actually call one, take its endpoint, httpMethod, and input schema from this response and pass them to invokeSalesforceApiActionTool on this same server.</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>false</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>bizApiCatalogServiceTool</toolName>
+        <toolTitle>Biz Api Catalog Service</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-ProductCatalogStructureService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>ProductCatalogStructureService</operation>
+        </apiDefinition>
+        <descriptionOverride>Gets the full Product Catalog Management (PCM) structure for one product by Id or ProductCode -- attributes, classification, category, catalog, bundle/component structure, selling models, and pricebook entries, with every record Id included. Pass includeRampAndUsage=true to also fetch ramp segments and usage entitlement grants (a separate call).</descriptionOverride>
+        <destructive>false</destructive>
+        <idempotent>true</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>true</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>productCatalogStructureServiceTool</toolName>
+        <toolTitle>Product Catalog Structure Service</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-InvokeSalesforceApiAction</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>InvokeSalesforceApiAction</operation>
+        </apiDefinition>
+        <descriptionOverride>Calls any standard, OOTB Salesforce REST/Connect API endpoint on this org given a path, HTTP method, and optional JSON body -- authenticates via a self-issued JWT Bearer token minted per-call for the calling user, so the resulting access token reflects the calling rep, not a fixed service account. For Revenue Cloud business-process APIs specifically, call bizApiCatalogServiceTool first to discover the real endpoint/method/schema -- don't guess a Revenue Cloud endpoint path. Call ONLY after the user has explicitly confirmed the endpoint, method, and payload -- never speculatively, especially for non-GET calls.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>false</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>invokeSalesforceApiActionTool</toolName>
+        <toolTitle>Invoke Salesforce Api Action</toolTitle>
+    </tools>
+    <tools>
+        <apiDefinition>
+            <apiIdentifier>aa:apex-RecordAccessService</apiIdentifier>
+            <apiSource>API_CATALOG</apiSource>
+            <operation>RecordAccessService</operation>
+        </apiDefinition>
+        <descriptionOverride>Reads or edits any Salesforce record by Id -- no need to know the object type in advance. Omit fieldsToUpdateJson for a read; pass it (a JSON object of field API name -&gt; new value, e.g. {"Industry":"Technology"}) to update the record first, then this returns the post-update state. Respects the calling user's own CRUD/FLS/sharing on both paths. Date/DateTime fields are not supported for update in this version. Call ONLY after the user has explicitly confirmed the record and field values when updating -- never speculatively.</descriptionOverride>
+        <destructive>true</destructive>
+        <idempotent>false</idempotent>
+        <openWorld>true</openWorld>
+        <readOnly>false</readOnly>
+        <returnDirect>false</returnDirect>
+        <toolName>getOrUpdateRecord</toolName>
+        <toolTitle>Get Or Update Record</toolTitle>
+    </tools>
+</McpServerDefinition>

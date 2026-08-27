@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ApiNamedQuery xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <apiNamedQueryParameters>
+        <description
+    >Salesforce Id of the Account to get details for</description>
+        <parameterLabel>Account Id</parameterLabel>
+        <parameterName>accountid</parameterName>
+    </apiNamedQueryParameters>
+    <body2
+  >SELECT Id, Name, Industry, Type, Phone, Website, NumberOfEmployees, OwnerId, (SELECT Id FROM Contacts) FROM Account WHERE Id = :accountid</body2>
+    <description
+  >Gets key details for one Account (industry, type, phone, website, employee count, owner) plus its Contacts as a nested list -- the number of Contacts is the length of that nested list, no separate count call needed.</description>
+    <masterLabel>Account Info</masterLabel>
+</ApiNamedQuery>

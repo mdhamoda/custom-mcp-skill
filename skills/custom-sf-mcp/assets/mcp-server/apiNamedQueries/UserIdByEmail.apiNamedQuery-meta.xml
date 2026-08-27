@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ApiNamedQuery xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiNamedQueryParameters>
+        <description>Email address of the sales rep to look up.</description>
+        <parameterLabel>Email</parameterLabel>
+        <parameterName>email</parameterName>
+    </apiNamedQueryParameters>
+    <apiVersion>67.0</apiVersion>
+    <body2>SELECT Id, Name, Email FROM User WHERE Email = :email</body2>
+    <description
+  >Resolves a sales rep&apos;s Salesforce User Id and Name from their email address.</description>
+    <masterLabel>User Id By Email</masterLabel>
+</ApiNamedQuery>

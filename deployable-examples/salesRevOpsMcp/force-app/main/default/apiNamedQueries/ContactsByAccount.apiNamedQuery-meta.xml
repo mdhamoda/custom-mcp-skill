@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ApiNamedQuery xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <apiNamedQueryParameters>
+        <description
+    >Salesforce Id of the Account to list Contacts for</description>
+        <parameterLabel>Account Id</parameterLabel>
+        <parameterName>accountid</parameterName>
+    </apiNamedQueryParameters>
+    <body2
+  >SELECT Id, Name, Email, Title, AccountId FROM Contact WHERE AccountId = :accountid ORDER BY Name</body2>
+    <description
+  >Lists every Contact on an Account -- name, email, title. No "primary contact" designation is returned -- most orgs have no reliable field/data for it (OpportunityContactRole often unused; AccountContactRelation often not enabled).</description>
+    <masterLabel>Contacts By Account</masterLabel>
+</ApiNamedQuery>
