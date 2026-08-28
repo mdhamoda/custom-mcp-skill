@@ -1,30 +1,86 @@
 # custom-mcp-skill
 
-**The `custom-platform-mcp` Agent Skill**, standalone — administers MCP servers inside a
+**The `custom-sf-mcp` Agent Skill**, standalone — administers MCP servers inside a
 Salesforce org: activates/deactivates standard MCP servers, registers custom and external MCP
 servers, sets up the OAuth/PKCE client side (External Client Apps), and picks the right MCP
 surface for a task.
 
 Extracted from the [`revSkills`](https://github.com/mdhamoda) community distribution (34
-`custom-rev-*` skills + `custom-platform-mcp` + friends) so this one skill can be versioned,
+`custom-rev-*` skills + `custom-sf-mcp` + friends) so this one skill can be versioned,
 installed, and shared on its own. Everything below is drawn from the skill's own reference docs
-(`skills/custom-platform-mcp/references/`) — `[org]` marks a claim observed against a live
+(`skills/custom-sf-mcp/references/`) — `[org]` marks a claim observed against a live
 Salesforce org, `[doc]` marks documented-but-unverified.
 
 ## What's in the box
 
 | Path | What |
 |---|---|
-| [`skills/custom-platform-mcp/`](skills/custom-platform-mcp/) | Source form — `SKILL.md`, `scripts/`, `references/`, `assets/` |
-| [`skills-packaged/custom-platform-mcp.skill`](skills-packaged/custom-platform-mcp.skill) | The same skill, zipped and ready to install |
-| [`claudeaiSkills/`](claudeaiSkills/) | Skills packaged for **claude.ai** (the web product) rather than a Claude Code project — see [`claudeaiSkills/README.md`](claudeaiSkills/README.md) for what's there and how to upload/enable a skill in claude.ai |
+| [`skills/custom-sf-mcp/`](skills/custom-sf-mcp/) | Source form — `SKILL.md`, `scripts/`, `references/`, `assets/` |
+| [`skills-packaged/custom-sf-mcp.skill`](skills-packaged/custom-sf-mcp.skill) | The same skill, zipped and ready to install |
+| [`deployable-examples/salesRevOpsMcp/`](deployable-examples/salesRevOpsMcp/) | A real, 17-tool custom MCP server (Sales Rev Ops), deployable as-is with `sf` — see [below](#deployable-example--sales-rev-ops-mcp-17-tools) |
+| [`claudeaiSkills/`](claudeaiSkills/) | Skills packaged for **claude.ai** (the web product) rather than a Claude Code project — see [below](#connecting-claudeai-as-an-mcp-client--and-the-ui-skill) and [`claudeaiSkills/README.md`](claudeaiSkills/README.md) |
 
 ## Install
 
-Drop [`skills-packaged/custom-platform-mcp.skill`](skills-packaged/custom-platform-mcp.skill)
+Drop [`skills-packaged/custom-sf-mcp.skill`](skills-packaged/custom-sf-mcp.skill)
 wherever your Claude Code setup loads packaged skills from, or copy
-[`skills/custom-platform-mcp/`](skills/custom-platform-mcp/) directly into a project's
+[`skills/custom-sf-mcp/`](skills/custom-sf-mcp/) directly into a project's
 `.claude/skills/` directory.
+
+---
+
+## Deployable example — Sales Rev Ops MCP (17 tools)
+
+[`deployable-examples/salesRevOpsMcp/`](deployable-examples/salesRevOpsMcp/) is a complete,
+real custom MCP server — scrubbed and renamed from an actual org-verified deployment (API
+v67.0) — meant to be deployed as-is into a real org with `sf`, not just read as reference. Every
+backing type this skill covers appears at least once: `aa:` (Apex `@InvocableMethod`), `fa:`
+(Autolaunched Flow), `nq:` (Named Query), and `psmcps:` (re-served standard tools).
+
+| Tool | Backing | Needs |
+|---|---|---|
+| `getRepDailySummary` | `aa:` Apex (`RepDailySummaryService`) | Account/Opportunity/Task/Asset data |
+| `getRecordLink` | `aa:` Apex (`GetRecordLinkService`) | nothing extra |
+| `summarizeRecord` | `aa:` Apex (`SummarizeRecordService`) | nothing extra |
+| `getComposeEmailLink` | `aa:` Apex (`GetComposeEmailLinkService`) | the `ComposeAndSendEmail` flow |
+| `getOrUpdateRecord` | `aa:` Apex (`RecordAccessService`) | nothing extra |
+| `sendCustomerEmail` | `fa:` Autolaunched Flow (`SendCustomerEmail`) | the `Customer Follow-Up` email-template folder |
+| `bizApiCatalogServiceTool` (`REV000016_BizApiCatalogService`) | `aa:` Apex (`BizApiCatalogService`) | JWT self-callout |
+| `productCatalogStructureServiceTool` (`REV000016_ProductCatalogStructureService`) | `aa:` Apex (`ProductCatalogStructureService`) | JWT self-callout + Revenue Cloud/PCM |
+| `invokeSalesforceApiActionTool` (`REV000016_InvokeSalesforceApiAction`) | `aa:` Apex (`InvokeSalesforceApiAction`) | JWT self-callout |
+| `findUserIdByEmail` | `nq:` Named Query | manual Activate in API Catalog |
+| `listContactsByAccount` | `nq:` Named Query | manual Activate in API Catalog |
+| `listCustomerEmailTemplates` | `nq:` Named Query | manual Activate in API Catalog |
+| `getAccountInfo` | `nq:` Named Query | manual Activate in API Catalog |
+| `soqlQuery`, `createSobjectRecordTool`, `updateSobjectRecordTool`, `updateRelatedRecordTool` | `psmcps:` (re-served standard tools) | none — no backing file needed at all |
+
+Full deploy order (classes/flows/named-queries → **manually Activate each Named Query in Setup →
+API Catalog** → server definition → **activate the custom server**), the JWT self-callout
+prerequisite for the three `REV000016_*` tools, and what's deliberately left out, are all in
+[`deployable-examples/salesRevOpsMcp/README.md`](deployable-examples/salesRevOpsMcp/README.md).
+
+## Connecting claude.ai as an MCP client — and the UI skill
+
+Two separate things live under this repo's `claudeaiSkills/` and connect to each other:
+
+1. **claude.ai as an MCP *client*** — pointing claude.ai's Connectors at a hosted Salesforce MCP
+   server (standard or a deployed custom one like `salesRevOpsMcp` above) so Claude can call its
+   tools at all. Steps (from [`references/clients-and-troubleshooting.md` §3](skills/custom-sf-mcp/references/clients-and-troubleshooting.md#3-client-configuration)):
+   1. claude.ai left sidebar → **Customize** → **Connectors** → **+** → **Add custom connector**
+   2. Name it (+ optional description)
+   3. **Server URL** — the server's URL per the grammar table in
+      [`clients-and-troubleshooting.md` §1](skills/custom-sf-mcp/references/clients-and-troubleshooting.md)
+      (e.g. `.../platform/mcp/v1/custom/SalesRevOpsExample` for the example above)
+   4. **Advanced settings** → **OAuth Client ID** = the ECA's consumer key → **Add**
+   5. **Connect** → redirects to the org holding the ECA to authorize
+   6. Optional: **Configure** → per-tool permission settings
+   7. Register `https://claude.ai/api/mcp/auth_callback` as a callback URL on the ECA (see the
+      [OAuth / PKCE section](#oauth--pkce-flow--callback-urls) above for the ECA bundle itself)
+2. **The `custom-salesforce-ui-workspace-generate` claude.ai *skill*** — once claude.ai can call
+   the tools, this skill (in [`claudeaiSkills/`](claudeaiSkills/)) is what renders their results as
+   an interactive Lightning-styled Artifact instead of a plain chat table, and includes the
+   "Instructions for Claude" text to make that automatic. Full upload/enable steps and that text
+   block: [`claudeaiSkills/README.md`](claudeaiSkills/README.md).
 
 ---
 
@@ -294,7 +350,7 @@ the consent screen was reached. `error=invalid_client_id` / `redirect_uri_mismat
 
 ## ECA (External Client App) support
 
-Full spec in [`references/eca-and-testing.md`](skills/custom-platform-mcp/references/eca-and-testing.md).
+Full spec in [`references/eca-and-testing.md`](skills/custom-sf-mcp/references/eca-and-testing.md).
 Covers, beyond the OAuth/PKCE basics above:
 
 - **All 13 ECA metadata types** and which 3 are actually required for MCP vs. auto-created vs.
@@ -310,12 +366,12 @@ Covers, beyond the OAuth/PKCE basics above:
   **not** the certificate Salesforce actually signs with — retrieve the platform's own generated
   `Certificate` metadata and use that), and scope/pre-authorization requirements — org-verified
   end-to-end with a real access token and a genuine `tools/call` round trip. Worked examples ship
-  in [`assets/eca/jwt-bearer-self-callout/`](skills/custom-platform-mcp/assets/eca/jwt-bearer-self-callout/).
+  in [`assets/eca/jwt-bearer-self-callout/`](skills/custom-sf-mcp/assets/eca/jwt-bearer-self-callout/).
 - **Promotion** — `McpServerAccess` is a *runtime* record, not metadata: deploying an ECA to the
   next environment carries **none** of the server activation state. Every org needs its own
   activation step, or clients fail to connect with perfectly valid credentials.
 
-Worked ECA metadata bundles: [`assets/eca/`](skills/custom-platform-mcp/assets/eca/).
+Worked ECA metadata bundles: [`assets/eca/`](skills/custom-sf-mcp/assets/eca/).
 
 ---
 
@@ -323,16 +379,16 @@ Worked ECA metadata bundles: [`assets/eca/`](skills/custom-platform-mcp/assets/e
 
 | Script | Purpose |
 |---|---|
-| [`scripts/esr-toolkit.mjs`](skills/custom-platform-mcp/scripts/esr-toolkit.mjs) | Authors `ExternalServiceRegistration`/`ApiNamedQuery`/`NamedCredential` backings without VS Code: `esr aura` (pulls the real OAS3 spec from the org), `esr apexrest` (deterministic reflection + placeholder schemas), `esr namedquery` (deploys the `ApiNamedQuery`, tells you to Activate manually), and `esr custom` (authors a `Custom`-type ESR + Named Credential pair for a genuine external API, from either a real OpenAPI file or synthesized placeholder operations). |
-| [`scripts/mcpserverdef-toolkit.mjs`](skills/custom-platform-mcp/scripts/mcpserverdef-toolkit.mjs) | Wires a built/activated backing onto an `McpServerDefinition`'s `<tools>` list — `add-tool ae\|ar\|nq\|aa\|fa\|ct\|psmcps ...` — including the adopt-vs-construct logic each prefix needs. |
-| [`assets/scripts/pkce-mcp-test.mjs`](skills/custom-platform-mcp/assets/scripts/pkce-mcp-test.mjs) | Reusable PKCE → token → MCP handshake → `tools/list`/`tools/call` test harness; listens on the fixed `localhost:1717/OauthRedirect` callback and persists the token so later runs skip re-consent. |
+| [`scripts/esr-toolkit.mjs`](skills/custom-sf-mcp/scripts/esr-toolkit.mjs) | Authors `ExternalServiceRegistration`/`ApiNamedQuery`/`NamedCredential` backings without VS Code: `esr aura` (pulls the real OAS3 spec from the org), `esr apexrest` (deterministic reflection + placeholder schemas), `esr namedquery` (deploys the `ApiNamedQuery`, tells you to Activate manually), and `esr custom` (authors a `Custom`-type ESR + Named Credential pair for a genuine external API, from either a real OpenAPI file or synthesized placeholder operations). |
+| [`scripts/mcpserverdef-toolkit.mjs`](skills/custom-sf-mcp/scripts/mcpserverdef-toolkit.mjs) | Wires a built/activated backing onto an `McpServerDefinition`'s `<tools>` list — `add-tool ae\|ar\|nq\|aa\|fa\|ct\|psmcps ...` — including the adopt-vs-construct logic each prefix needs. |
+| [`assets/scripts/pkce-mcp-test.mjs`](skills/custom-sf-mcp/assets/scripts/pkce-mcp-test.mjs) | Reusable PKCE → token → MCP handshake → `tools/list`/`tools/call` test harness; listens on the fixed `localhost:1717/OauthRedirect` callback and persists the token so later runs skip re-consent. |
 
 Both toolkit scripts write real source files under `force-app/main/default/` and dry-run validate
 before any `--deploy` — nothing is ever created directly via a Tooling API poke.
 
 ## Worked examples
 
-[`assets/mcp-server/`](skills/custom-platform-mcp/assets/mcp-server/) — a deployable custom MCP
+[`assets/mcp-server/`](skills/custom-sf-mcp/assets/mcp-server/) — a deployable custom MCP
 server bundle: Apex classes (including a `Custom`-type ESR example wrapping the public
 `vatcomply.com` API via a Named Credential), a Flow, the `McpServerDefinition`, and the
 `ExternalServiceRegistration`/`NamedCredential` pair backing it.
