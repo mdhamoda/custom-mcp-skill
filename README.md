@@ -17,6 +17,7 @@ Salesforce org, `[doc]` marks documented-but-unverified.
 |---|---|
 | [`skills/custom-platform-mcp/`](skills/custom-platform-mcp/) | Source form — `SKILL.md`, `scripts/`, `references/`, `assets/` |
 | [`skills-packaged/custom-platform-mcp.skill`](skills-packaged/custom-platform-mcp.skill) | The same skill, zipped and ready to install |
+| [`claudeaiSkills/`](claudeaiSkills/) | Skills packaged for **claude.ai** (the web product) rather than a Claude Code project — see [`claudeaiSkills/README.md`](claudeaiSkills/README.md) for what's there and how to upload/enable a skill in claude.ai |
 
 ## Install
 
